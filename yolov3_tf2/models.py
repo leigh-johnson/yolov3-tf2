@@ -146,6 +146,52 @@ def YoloOutput(filters, anchors, classes, name=None):
     return yolo_output
 
 
+class YoloBoxes(tf.keras.layers.Layer):
+    def __init__(self, anchors, classes, **kwargs):
+        self.anchors = anchors
+        self.classes = classes
+        super().__init__(**kwargs)
+
+    def build(self, input_shape):
+        grid_size = input_shape[1]
+
+        grid = tf.meshgrid(tf.range(grid_size), tf.range(grid_size))
+        grid = tf.expand_dims(tf.stack(grid, axis=-1), axis=2)  # [gx, gy, 1, 2]
+
+        self.grid = grid
+        self.grid_size = grid_size
+        super().build(input_shape)  # Be sure to call this at the end
+
+    def call(self, x):
+        box_xy, box_wh, objectness, class_probs = tf.split(x, (2, 2, 1, self.classes), axis=-1)
+
+        box_xy = tf.sigmoid(box_xy)
+        objectness = tf.sigmoid(objectness)
+        class_probs = tf.sigmoid(class_probs)
+        pred_box = tf.concat((box_xy, box_wh), axis=-1)  # original xywh for loss
+
+        box_xy = (box_xy + tf.cast(self.grid, tf.float32)) / \
+            tf.cast(self.grid_size, tf.float32)
+        box_wh = tf.exp(box_wh) * self.anchors
+
+        box_x1y1 = box_xy - box_wh / 2
+        box_x2y2 = box_xy + box_wh / 2
+        bbox = tf.concat([box_x1y1, box_x2y2], axis=-1)
+
+        print("YoloBoxes call bbox shape:", bbox.shape)
+        print("YoloBoxes call objectness shape:", objectness.shape)
+        print("YoloBoxes call class_probs shape:", class_probs.shape)
+        return bbox, objectness, class_probs, pred_box
+
+    def get_config(self):
+        config = {
+            'anchors': self.anchors,
+            'classes': self.classes,
+        }
+        config.update(super().get_config())
+        return config
+
+
 def yolo_boxes(pred, anchors, classes):
     # pred: (batch_size, grid, grid, anchors, (x, y, w, h, obj, ...classes))
     grid_size = tf.shape(pred)[1]
@@ -170,6 +216,45 @@ def yolo_boxes(pred, anchors, classes):
     bbox = tf.concat([box_x1y1, box_x2y2], axis=-1)
 
     return bbox, objectness, class_probs, pred_box
+
+
+class YoloNMS(tf.keras.layers.Layer):
+    def __init__(self, **kwargs):
+        super().__init__(**kwargs)
+
+    def call(self, x):
+        outputs = x
+
+        # boxes, conf, type
+        b, c, t = [], [], []
+
+        lengths = [13, 26, 52]
+        for i, o in enumerate(outputs):
+            num_boxes = (lengths[i] ** 2) * 3
+            b.append(tf.reshape(o[0], (num_boxes, 4)))
+            c.append(tf.reshape(o[1], (num_boxes,)))
+            t.append(tf.reshape(o[2], (num_boxes, 80)))
+
+        bbox = tf.concat(b, axis=0)
+        confidence = tf.concat(c, axis=0)
+        class_probs = tf.concat(t, axis=0)
+
+        print("YoloNMS bbox shape:", bbox.shape)
+        print("YoloNMS confidence shape:", confidence.shape)
+        print("YoloNMS class_probs shape:", class_probs.shape)
+        #YoloNMS bbox shape: (10647, 4)
+        #YoloNMS confidence shape: (10647,)
+        #YoloNMS class_probs shape: (10647, 80)
+
+        indices, num_valid = tf.image.non_max_suppression_padded(bbox,
+                                                                 confidence,
+                                                                 max_output_size=100,
+                                                                 iou_threshold=FLAGS.yolo_iou_threshold,
+                                                                 pad_to_max_output_size=True)
+        boxes = tf.gather(bbox, indices, name='boxes')
+        scores = tf.gather(confidence, indices, name='scores')
+        classes = tf.gather(class_probs, indices, name='classes')
+        return boxes, scores, classes, num_valid
 
 
 def yolo_nms(outputs, anchors, masks, classes):
@@ -218,15 +303,11 @@ def YoloV3(size=None, channels=3, anchors=yolo_anchors,
     if training:
         return Model(inputs, (output_0, output_1, output_2), name='yolov3')
 
-    boxes_0 = Lambda(lambda x: yolo_boxes(x, anchors[masks[0]], classes),
-                     name='yolo_boxes_0')(output_0)
-    boxes_1 = Lambda(lambda x: yolo_boxes(x, anchors[masks[1]], classes),
-                     name='yolo_boxes_1')(output_1)
-    boxes_2 = Lambda(lambda x: yolo_boxes(x, anchors[masks[2]], classes),
-                     name='yolo_boxes_2')(output_2)
+    boxes_0 = YoloBoxes(anchors[masks[0]], classes, name='yolo_boxes_0')(output_0)
+    boxes_1 = YoloBoxes(anchors[masks[1]], classes, name='yolo_boxes_1')(output_1)
+    boxes_2 = YoloBoxes(anchors[masks[2]], classes, name='yolo_boxes_2')(output_2)
 
-    outputs = Lambda(lambda x: yolo_nms(x, anchors, masks, classes),
-                     name='yolo_nms')((boxes_0[:3], boxes_1[:3], boxes_2[:3]))
+    outputs = YoloNMS(name='yolo_nms')((boxes_0[:3], boxes_1[:3], boxes_2[:3]))
 
     return Model(inputs, outputs, name='yolov3')
 
