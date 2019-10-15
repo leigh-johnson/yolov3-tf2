@@ -31,7 +31,7 @@ yolo_anchors = np.array([(10, 13), (16, 30), (33, 23), (30, 61), (62, 45),
 yolo_anchor_masks = np.array([[6, 7, 8], [3, 4, 5], [0, 1, 2]])
 
 yolo_tiny_anchors = np.array([(10, 14), (23, 27), (37, 58),
-                              (81, 82), (135, 169),  (344, 319)],
+                              (81, 82), (135, 169), (344, 319)],
                              np.float32) / 416
 yolo_tiny_anchor_masks = np.array([[3, 4, 5], [0, 1, 2]])
 
@@ -201,7 +201,8 @@ def yolo_nms(outputs, anchors, masks, classes):
 
 def YoloV3(size=None, channels=3, anchors=yolo_anchors,
            masks=yolo_anchor_masks, classes=80, training=False):
-    x = inputs = Input([size, size, channels])
+    batch_size = None if training else 1
+    x = inputs = Input([size, size, channels], batch_size=batch_size)
 
     x_36, x_61, x = Darknet(name='yolo_darknet')(x)
 
