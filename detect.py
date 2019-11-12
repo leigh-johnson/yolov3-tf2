@@ -24,7 +24,9 @@ def main(_argv):
     if FLAGS.tiny:
         yolo = YoloV3Tiny(classes=FLAGS.num_classes)
     else:
-        yolo = YoloV3(classes=FLAGS.num_classes)
+        yolo = YoloV3(classes=FLAGS.num_classes, size=FLAGS.size)
+
+    yolo.summary()
 
     yolo.load_weights(FLAGS.weights)
     logging.info('weights loaded')
@@ -42,15 +44,21 @@ def main(_argv):
     logging.info('time: {}'.format(t2 - t1))
 
     logging.info('detections:')
-    for i in range(nums[0]):
-        logging.info('\t{}, {}, {}'.format(class_names[int(classes[0][i])],
-                                           np.array(scores[0][i]),
-                                           np.array(boxes[0][i])))
+    for i in range(nums):
+        logging.info('\t{}, {}, {}'.format(class_names[int(np.argmax(classes[i]))],
+                                           np.asarray(scores[i]),
+                                           np.asarray(boxes[i])))
+
+    print(nums)
+    print('scores', scores)
+    print('classes', classes)
+    print('boxes', boxes)
 
     img = cv2.imread(FLAGS.image)
-    img = draw_outputs(img, (boxes, scores, classes, nums), class_names)
+    img = draw_outputs(img, ([boxes], [scores], [classes], [nums]), class_names)
     cv2.imwrite(FLAGS.output, img)
     logging.info('output saved to: {}'.format(FLAGS.output))
+
 
 if __name__ == '__main__':
     try:

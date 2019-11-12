@@ -66,8 +66,8 @@ def DarknetBlock(x, filters, blocks):
     return x
 
 
-def Darknet(name=None):
-    x = inputs = Input([None, None, 3])
+def Darknet(name=None, input_shape=[None, None, 3]):
+    x = inputs = Input(input_shape)
     x = DarknetConv(x, 32, 3)
     x = DarknetBlock(x, 64, 1)
     x = DarknetBlock(x, 128, 2)  # skip connection
@@ -77,8 +77,8 @@ def Darknet(name=None):
     return tf.keras.Model(inputs, (x_36, x_61, x), name=name)
 
 
-def DarknetTiny(name=None):
-    x = inputs = Input([None, None, 3])
+def DarknetTiny(name=None, input_shape=[None, None, 3]):
+    x = inputs = Input(input_shape)
     x = DarknetConv(x, 16, 3)
     x = MaxPool2D(2, 2, 'same')(x)
     x = DarknetConv(x, 32, 3)
@@ -246,13 +246,15 @@ class YoloNMS(tf.keras.layers.Layer):
         #YoloNMS confidence shape: (10647,)
         #YoloNMS class_probs shape: (10647, 80)
 
+        scores = confidence * tf.reduce_max(class_probs, axis=1)
         indices, num_valid = tf.image.non_max_suppression_padded(bbox,
-                                                                 confidence,
+                                                                 scores,
                                                                  max_output_size=100,
                                                                  iou_threshold=FLAGS.yolo_iou_threshold,
+                                                                 score_threshold=FLAGS.yolo_score_threshold,
                                                                  pad_to_max_output_size=True)
         boxes = tf.gather(bbox, indices, name='boxes')
-        scores = tf.gather(confidence, indices, name='scores')
+        scores = tf.gather(scores, indices, name='scores')
         classes = tf.gather(class_probs, indices, name='classes')
         return boxes, scores, classes, num_valid
 
@@ -289,7 +291,7 @@ def YoloV3(size=None, channels=3, anchors=yolo_anchors,
     batch_size = None if training else 1
     x = inputs = Input([size, size, channels], batch_size=batch_size)
 
-    x_36, x_61, x = Darknet(name='yolo_darknet')(x)
+    x_36, x_61, x = Darknet(name='yolo_darknet', input_shape=x.shape[1:])(x)
 
     x = YoloConv(512, name='yolo_conv_0')(x)
     output_0 = YoloOutput(512, len(masks[0]), classes, name='yolo_output_0')(x)
