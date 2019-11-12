@@ -29,7 +29,9 @@ def main(_argv):
     if FLAGS.tiny:
         yolo = YoloV3Tiny(classes=FLAGS.num_classes)
     else:
-        yolo = YoloV3(classes=FLAGS.num_classes)
+        yolo = YoloV3(classes=FLAGS.num_classes, size=FLAGS.size)
+
+    yolo.summary()
 
     yolo.load_weights(FLAGS.weights).expect_partial()
     logging.info('weights loaded')
@@ -55,13 +57,23 @@ def main(_argv):
     logging.info('time: {}'.format(t2 - t1))
 
     logging.info('detections:')
-    for i in range(nums[0]):
-        logging.info('\t{}, {}, {}'.format(class_names[int(classes[0][i])],
-                                           np.array(scores[0][i]),
-                                           np.array(boxes[0][i])))
+    for i in range(nums):
+        logging.info('\t{}, {}, {}'.format(class_names[int(np.argmax(classes[i]))],
+                                           np.asarray(scores[i]),
+                                           np.asarray(boxes[i])))
 
+    print(nums)
+    print('scores', scores)
+    print('classes', classes)
+    print('boxes', boxes)
+
+<<<<<<< HEAD
     img = cv2.cvtColor(img_raw.numpy(), cv2.COLOR_RGB2BGR)
     img = draw_outputs(img, (boxes, scores, classes, nums), class_names)
+=======
+    img = cv2.imread(FLAGS.image)
+    img = draw_outputs(img, ([boxes], [scores], [classes], [nums]), class_names)
+>>>>>>> confirm nms_padded output matches original combined_nms
     cv2.imwrite(FLAGS.output, img)
     logging.info('output saved to: {}'.format(FLAGS.output))
 

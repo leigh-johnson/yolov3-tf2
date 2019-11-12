@@ -16,7 +16,6 @@ from tensorflow.python.util import nest
 flags.DEFINE_string('weights', './checkpoints/yolov3.tf',
                     'path to weights file')
 flags.DEFINE_boolean('tiny', False, 'yolov3 or yolov3-tiny')
-flags.DEFINE_string('smoutput', './serving/yolov3/1', 'path to saved_model')
 flags.DEFINE_string('tfliteoutput', './lite/yolov3.tflite', 'path to TFLite model')
 flags.DEFINE_string('classes', './data/coco.names', 'path to classes file')
 flags.DEFINE_string('image', './data/girl.png', 'path to input image')
