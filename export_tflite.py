@@ -1,4 +1,5 @@
 import time
+import os
 from absl import app, flags, logging
 from absl.flags import FLAGS
 import cv2
@@ -33,13 +34,21 @@ def main(_argv):
     yolo.load_weights(FLAGS.weights)
     logging.info('weights loaded')
 
-    yolo.save('yolo_inference.hdf5')
+    try:
+        os.mkdir('lite')
+    except FileExistsError:
+        pass
+
+    yolo.save('lite/yolov3_inference.hdf5')
+    with open('lite/yolov3_inference.json', 'w') as f:
+        jsonstr = yolo.to_json(indent=4)
+        f.write(jsonstr)
 
     print("Model saved, converting to TFLite")
     converter = tf.lite.TFLiteConverter.from_keras_model(yolo)
-    #converter = tf.compat.v1.lite.TFLiteConverter.from_keras_model_file('yolo_inference.hdf5')
-    converter.target_spec.supported_ops = [tf.lite.OpsSet.TFLITE_BUILTINS,
-                                           tf.lite.OpsSet.SELECT_TF_OPS]
+    #converter.target_spec.supported_ops = [tf.lite.OpsSet.TFLITE_BUILTINS,
+    #                                       tf.lite.OpsSet.SELECT_TF_OPS]
+    converter.target_spec.supported_ops = [tf.lite.OpsSet.SELECT_TF_OPS]
     tflite_model = converter.convert()
     logging.info("model converted")
     open(FLAGS.tfliteoutput, "wb").write(tflite_model)

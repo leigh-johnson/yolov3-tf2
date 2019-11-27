@@ -50,6 +50,7 @@ def main(_argv):
 
     img = tf.expand_dims(img_raw, 0)
     img = transform_images(img, FLAGS.size)
+    print("Input image shape:", img_shape)
 
     t1 = time.time()
     boxes, scores, classes, nums = yolo(img)
@@ -63,17 +64,12 @@ def main(_argv):
                                            np.asarray(boxes[i])))
 
     print(nums)
-    print('scores', scores)
-    print('classes', classes)
-    print('boxes', boxes)
+    print('scores:', scores)
+    print('classes:', classes)
+    print('boxes:', boxes[:nums, :] * [img_shape[0], img_shape[1], img_shape[0], img_shape[1]])
 
-<<<<<<< HEAD
-    img = cv2.cvtColor(img_raw.numpy(), cv2.COLOR_RGB2BGR)
-    img = draw_outputs(img, (boxes, scores, classes, nums), class_names)
-=======
     img = cv2.imread(FLAGS.image)
     img = draw_outputs(img, ([boxes], [scores], [classes], [nums]), class_names)
->>>>>>> confirm nms_padded output matches original combined_nms
     cv2.imwrite(FLAGS.output, img)
     logging.info('output saved to: {}'.format(FLAGS.output))
 
