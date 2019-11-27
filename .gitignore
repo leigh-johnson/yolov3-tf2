@@ -2,6 +2,7 @@
 *.weights
 /checkpoints/*
 /serving/*
+/lite/*
 /logs/
 /Untitled.ipynb
 /output.jpg

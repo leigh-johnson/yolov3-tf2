@@ -35,8 +35,10 @@ def main(_argv):
     logging.info('classes loaded')
 
     img = tf.image.decode_image(open(FLAGS.image, 'rb').read(), channels=3)
+    img_shape = img.shape
     img = tf.expand_dims(img, 0)
     img = transform_images(img, FLAGS.size)
+    print("Input image shape:", img_shape)
 
     t1 = time.time()
     boxes, scores, classes, nums = yolo(img)
@@ -50,9 +52,9 @@ def main(_argv):
                                            np.asarray(boxes[i])))
 
     print(nums)
-    print('scores', scores)
-    print('classes', classes)
-    print('boxes', boxes)
+    print('scores:', scores)
+    print('classes:', classes)
+    print('boxes:', boxes[:nums, :] * [img_shape[0], img_shape[1], img_shape[0], img_shape[1]])
 
     img = cv2.imread(FLAGS.image)
     img = draw_outputs(img, ([boxes], [scores], [classes], [nums]), class_names)
