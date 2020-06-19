@@ -105,7 +105,7 @@ def YoloConv(filters, name=None):
 
             # concat with skip connection
             x = DarknetConv(x, filters, 1)
-            x = UpSampling2D(2)(x)
+            x = UpSampling2D(2, interpolation='bilinear')(x)
             x = Concatenate()([x, x_skip])
         else:
             x = inputs = Input(x_in.shape[1:])
@@ -127,7 +127,7 @@ def YoloConvTiny(filters, name=None):
 
             # concat with skip connection
             x = DarknetConv(x, filters, 1)
-            x = UpSampling2D(2)(x)
+            x = UpSampling2D(2, interpolation='bilinear')(x)
             x = Concatenate()([x, x_skip])
         else:
             x = inputs = Input(x_in.shape[1:])
