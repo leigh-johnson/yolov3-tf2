@@ -46,9 +46,8 @@ def main(_argv):
 
     print("Model saved, converting to TFLite")
     converter = tf.lite.TFLiteConverter.from_keras_model(yolo)
-    #converter.target_spec.supported_ops = [tf.lite.OpsSet.TFLITE_BUILTINS,
-    #                                       tf.lite.OpsSet.SELECT_TF_OPS]
-    converter.target_spec.supported_ops = [tf.lite.OpsSet.SELECT_TF_OPS]
+    converter.experimental_new_converter = True
+    converter.target_spec.supported_ops = [tf.lite.OpsSet.TFLITE_BUILTINS]
     tflite_model = converter.convert()
     logging.info("model converted")
     open(FLAGS.tfliteoutput, "wb").write(tflite_model)
