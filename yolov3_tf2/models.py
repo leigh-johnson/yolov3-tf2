@@ -157,7 +157,6 @@ class YoloBoxes(tf.keras.layers.Layer):
     def build(self, input_shape):
         grid_size = input_shape[1]
 
-        import pdb; pdb.set_trace()
         grid = tf.meshgrid(tf.range(grid_size), tf.range(grid_size))
         grid = tf.expand_dims(tf.stack(grid, axis=-1), axis=2)  # [gx, gy, 1, 2]
 
@@ -233,7 +232,6 @@ class YoloNMS(tf.keras.layers.Layer):
 
         lengths = [13, 26, 52]
         for i, o in enumerate(outputs):
-            import pdb; pdb.set_trace()
             num_boxes = (lengths[i] ** 2) * 3
             b.append(tf.reshape(o[0], (num_boxes, 4)))
             c.append(tf.reshape(o[1], (num_boxes,)))
@@ -309,18 +307,25 @@ def YoloV3(size=None, channels=3, anchors=yolo_anchors,
     if training:
         return Model(inputs, (output_0, output_1, output_2), name='yolov3')
 
-    boxes_0 = YoloBoxes(anchors[masks[0]], classes, name='yolo_boxes_0')(output_0)
-    boxes_1 = YoloBoxes(anchors[masks[1]], classes, name='yolo_boxes_1')(output_1)
-    boxes_2 = YoloBoxes(anchors[masks[2]], classes, name='yolo_boxes_2')(output_2)
+    # uncomment for export_tflite.py
+    # boxes_0 = YoloBoxes(anchors[masks[0]], classes, name='yolo_boxes_0')(output_0)
+    # boxes_1 = YoloBoxes(anchors[masks[1]], classes, name='yolo_boxes_1')(output_1)
+    # boxes_2 = YoloBoxes(anchors[masks[2]], classes, name='yolo_boxes_2')(output_2)
 
-    # boxes_0 = Lambda(lambda x: yolo_boxes(x, anchors[masks[0]], classes),
-    #                  name='yolo_boxes_0')(output_0)
-    # boxes_1 = Lambda(lambda x: yolo_boxes(x, anchors[masks[1]], classes),
-    #                  name='yolo_boxes_1')(output_1)
-    # boxes_2 = Lambda(lambda x: yolo_boxes(x, anchors[masks[2]], classes),
-    #                  name='yolo_boxes_2')(output_2)
+    # uncomment for convert.py
+    boxes_0 = Lambda(lambda x: yolo_boxes(x, anchors[masks[0]], classes),
+                     name='yolo_boxes_0')(output_0)
+    boxes_1 = Lambda(lambda x: yolo_boxes(x, anchors[masks[1]], classes),
+                     name='yolo_boxes_1')(output_1)
+    boxes_2 = Lambda(lambda x: yolo_boxes(x, anchors[masks[2]], classes),
+                     name='yolo_boxes_2')(output_2)
 
+    # uncomment for export_tflite.py
     outputs = YoloNMS(name='yolo_nms')((boxes_0[:3], boxes_1[:3], boxes_2[:3]))
+
+    # uncomment for convert.py
+    outputs = Lambda(lambda x: yolo_nms(x, anchors, masks, classes),
+                     name='yolo_nms')((boxes_0[:3], boxes_1[:3], boxes_2[:3]))
 
     return Model(inputs, outputs, name='yolov3')
 
